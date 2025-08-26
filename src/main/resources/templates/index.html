@@ -28,17 +28,30 @@
     input[type=text]{flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px}
     button{padding:10px 14px;border-radius:10px;border:0;background:#0ea5e9;color:#fff;cursor:pointer}
     .card{border:1px solid #eee;border-radius:12px;padding:16px;margin:14px 0}
-    .results a{display:block;padding:10px 12px;border:1px solid #eee;border-radius:10px;margin:8px 0;text-decoration:none;color:#111}
+    .results a{display:block;padding:10px 12px;border:1px solid #eee;border-radius:10px;margin:8px 0;text-decoration:none;color:#111;transition:background .15s}
+    .results a:hover{background:#f8fafc}
     .days{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
     .day{border:1px solid #eee;border-radius:10px;padding:10px}
     .muted{color:#666;font-size:14px}
     #map { height: 480px; border-radius: 12px; margin: 12px 0; }
+
+    /* küçük cilalar */
+    .brand { display:flex; align-items:center; gap:10px }
+    .brand .dot { width:10px; height:10px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+    .pill { font-size:12px; padding:6px 10px; background:#eef6ff; border:1px solid #dbeafe; color:#1d4ed8; border-radius:999px }
+    .active { background:#0369a1; color:#fff !important; border-color:#0369a1 !important }
+    footer{padding:18px 24px; color:#eee; background:linear-gradient(90deg,#0369a1,#0ea5e9); text-align:center}
+    a.link { color:#fff; text-decoration:none; border-bottom:1px dashed rgba(255,255,255,.6) }
   </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Weather Java App</h1>
+    <div class="brand">
+      <div class="dot"></div>
+      <h1 style="margin:0">Weather Java App</h1>
+      <span class="pill" th:text="${unit == 'f' ? 'Fahrenheit' : 'Celsius'}">Celsius</span>
+    </div>
     <div class="muted">Open-Meteo ile şehir arayıp veya haritadan tıklayıp hava durumunu görüntüle</div>
   </header>
 
@@ -50,22 +63,37 @@
       <div class="muted">Haritaya tıkla → otomatik olarak o koordinatla sayfayı açar.</div>
     </div>
 
+    <!-- Ölçü birimi -->
+    <div class="card" style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+      <div><b>Ölçü birimi</b></div>
+      <div style="display:flex;gap:8px">
+        <a th:classappend="${unit} == 'c' ? ' active' : ''"
+           th:href="@{/(lat=${lat}, lon=${lon}, name=${weather != null ? weather.locationName : null}, q=${query}, u='c')}"
+           style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:#111">°C</a>
+        <a th:classappend="${unit} == 'f' ? ' active' : ''"
+           th:href="@{/(lat=${lat}, lon=${lon}, name=${weather != null ? weather.locationName : null}, q=${query}, u='f')}"
+           style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;text-decoration:none;color:#111">°F</a>
+      </div>
+    </div>
+
     <!-- Arama -->
     <form class="search" method="get" action="/" th:object="${query}">
       <input type="text" name="q" placeholder="Şehir ara: İstanbul, Ankara, İzmir…" th:value="${query}">
+      <input type="hidden" name="u" th:value="${unit}" />
       <button type="submit">Ara</button>
     </form>
-    <div th:if="${error}" class="card" style="background:#fee;border-color:#fca;color:#b00">
-  <b>Hata:</b> <span th:text="${error}">Bilinmeyen hata</span>
-</div>
 
+    <!-- Hata bandı -->
+    <div th:if="${error}" class="card" style="background:#fee;border-color:#fca;color:#b00">
+      <b>Hata:</b> <span th:text="${error}">Bilinmeyen hata</span>
+    </div>
 
     <!-- Arama sonuçları -->
     <div th:if="${results != null}" class="card">
       <h3>Sonuçlar</h3>
       <div class="results">
         <a th:each="r : ${results}"
-           th:href="@{/(lat=${r.latitude}, lon=${r.longitude}, name=${r.name + ' — ' + r.country})}"
+           th:href="@{/(lat=${r.latitude}, lon=${r.longitude}, name=${r.name + ' — ' + r.country}, u=${unit})}"
            th:text="${r.name + ' — ' + r.country}">Yer</a>
       </div>
       <div th:if="${#lists.isEmpty(results)}" class="muted">Sonuç bulunamadı.</div>
@@ -73,9 +101,9 @@
 
     <!-- Seçili konum hava -->
     <div th:if="${weather != null}" class="card">
-      <h2 th:text="${weather.locationName}">Konum</h2>
+      <h2 th:text="${weather.locationName}" style="margin-top:0">Konum</h2>
       <div>
-        <b th:text="${weather.currentTemp + '°'}">20°</b>
+        <b th:text="${weather.currentTemp + '°' + (unit == 'f' ? 'F' : 'C')}">20°C</b>
         — <span th:text="${@weatherCodeHelper.emoji(weather.currentCode)}">☀️</span>
           <span class="muted" th:text="${@weatherCodeHelper.text(weather.currentCode)}">Açıklama</span>
       </div>
@@ -83,7 +111,11 @@
       <div class="days" style="margin-top:12px">
         <div th:each="d : ${weather.daily}" class="day">
           <div th:text="${d.date}">2025-08-25</div>
-          <div><b th:text="${d.tmax + '°'}">28°</b> / <span th:text="${d.tmin + '°'}">20°</span></div>
+          <div>
+            <b th:text="${d.tmax + '°' + (unit == 'f' ? 'F' : 'C')}">28°C</b>
+            /
+            <span th:text="${d.tmin + '°' + (unit == 'f' ? 'F' : 'C')}">20°C</span>
+          </div>
           <div class="muted">
             <span th:text="${@weatherCodeHelper.emoji(d.code)}">☀️</span>
             <span th:text="${@weatherCodeHelper.text(d.code)}">Açıklama</span>
@@ -93,6 +125,12 @@
     </div>
   </main>
 </div>
+
+<footer>
+  <span>Veri: Open-Meteo · Harita: OpenStreetMap/Leaflet</span>
+  <span style="margin:0 8px">·</span>
+  <span>by <a class="link" href="https://github.com/dozmen23" target="_blank" rel="noreferrer">dozmen23</a></span>
+</footer>
 
 <!-- Haritayı başlat -->
 <script th:inline="javascript">
@@ -107,11 +145,15 @@
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
+  // Mevcut birimi koru
+  const params = new URLSearchParams(window.location.search);
+  const u = params.get('u') || 'c';
+
   map.on('click', function(e) {
     const lat = e.latlng.lat;
     const lon = e.latlng.lng;
     const name = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
-    window.location = `/?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`;
+    window.location = `/?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&u=${u}`;
   });
 
   if (HAS_POINT) {

@@ -17,6 +17,7 @@ public class ForecastController {
     }
 
     @GetMapping("/api/forecast")
+    
     public WeatherView forecast(
             @RequestParam("lat") double lat,
             @RequestParam("lon") double lon,
