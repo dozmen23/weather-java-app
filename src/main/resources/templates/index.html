@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="tr" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather Java App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Stil -->
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;margin:0;background:#0ea5e9;}
+    .wrap{max-width:900px;margin:32px auto;background:#fff;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.1);overflow:hidden}
+    header{padding:20px 24px;background:#0369a1;color:#fff}
+    main{padding:20px 24px}
+    .search{display:flex;gap:8px;margin:12px 0}
+    input[type=text]{flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:10px}
+    button{padding:10px 14px;border-radius:10px;border:0;background:#0ea5e9;color:#fff;cursor:pointer}
+    .card{border:1px solid #eee;border-radius:12px;padding:16px;margin:14px 0}
+    .results a{display:block;padding:10px 12px;border:1px solid #eee;border-radius:10px;margin:8px 0;text-decoration:none;color:#111}
+    .days{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .day{border:1px solid #eee;border-radius:10px;padding:10px}
+    .muted{color:#666;font-size:14px}
+    #map { height: 480px; border-radius: 12px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Weather Java App</h1>
+    <div class="muted">Open-Meteo ile şehir arayıp veya haritadan tıklayıp hava durumunu görüntüle</div>
+  </header>
+
+  <main>
+    <!-- Dünya Haritası -->
+    <div class="card">
+      <h3>Dünya Haritası (tıkla ve o noktanın hava durumunu gör)</h3>
+      <div id="map"></div>
+      <div class="muted">Haritaya tıkla → otomatik olarak o koordinatla sayfayı açar.</div>
+    </div>
+
+    <!-- Arama -->
+    <form class="search" method="get" action="/" th:object="${query}">
+      <input type="text" name="q" placeholder="Şehir ara: İstanbul, Ankara, İzmir…" th:value="${query}">
+      <button type="submit">Ara</button>
+    </form>
+    <div th:if="${error}" class="card" style="background:#fee;border-color:#fca;color:#b00">
+  <b>Hata:</b> <span th:text="${error}">Bilinmeyen hata</span>
+</div>
+
+
+    <!-- Arama sonuçları -->
+    <div th:if="${results != null}" class="card">
+      <h3>Sonuçlar</h3>
+      <div class="results">
+        <a th:each="r : ${results}"
+           th:href="@{/(lat=${r.latitude}, lon=${r.longitude}, name=${r.name + ' — ' + r.country})}"
+           th:text="${r.name + ' — ' + r.country}">Yer</a>
+      </div>
+      <div th:if="${#lists.isEmpty(results)}" class="muted">Sonuç bulunamadı.</div>
+    </div>
+
+    <!-- Seçili konum hava -->
+    <div th:if="${weather != null}" class="card">
+      <h2 th:text="${weather.locationName}">Konum</h2>
+      <div>
+        <b th:text="${weather.currentTemp + '°'}">20°</b>
+        — <span th:text="${@weatherCodeHelper.emoji(weather.currentCode)}">☀️</span>
+          <span class="muted" th:text="${@weatherCodeHelper.text(weather.currentCode)}">Açıklama</span>
+      </div>
+
+      <div class="days" style="margin-top:12px">
+        <div th:each="d : ${weather.daily}" class="day">
+          <div th:text="${d.date}">2025-08-25</div>
+          <div><b th:text="${d.tmax + '°'}">28°</b> / <span th:text="${d.tmin + '°'}">20°</span></div>
+          <div class="muted">
+            <span th:text="${@weatherCodeHelper.emoji(d.code)}">☀️</span>
+            <span th:text="${@weatherCodeHelper.text(d.code)}">Açıklama</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Haritayı başlat -->
+<script th:inline="javascript">
+  const LAT = /*[[${lat}]]*/ null;
+  const LON = /*[[${lon}]]*/ null;
+  const HAS_POINT = LAT !== null && LON !== null;
+
+  const map = L.map('map', { worldCopyJump: true }).setView([20, 0], 2);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  map.on('click', function(e) {
+    const lat = e.latlng.lat;
+    const lon = e.latlng.lng;
+    const name = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+    window.location = `/?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}`;
+  });
+
+  if (HAS_POINT) {
+    const marker = L.marker([LAT, LON]).addTo(map);
+    marker.bindPopup('Seçili konum').openPopup();
+    map.setView([LAT, LON], 8);
+  }
+</script>
+</body>
+</html>

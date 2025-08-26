@@ -28,6 +28,26 @@ public class WeatherService {
             .build();
 
     private final ObjectMapper om = new ObjectMapper();
+public com.egeozmen.weather_java_app.model.Location reverseGeocode(double lat, double lon)
+        throws IOException, InterruptedException {
+    String url = "https://geocoding-api.open-meteo.com/v1/reverse?latitude=" + lat +
+            "&longitude=" + lon + "&language=tr&format=json";
+    JsonNode root = getJson(url);
+    JsonNode results = root.path("results");
+    if (results.isArray() && results.size() > 0) {
+        JsonNode r = results.get(0);
+        String name = text(r, "name");
+        String country = text(r, "country");
+        return new com.egeozmen.weather_java_app.model.Location(
+                name, country,
+                r.path("latitude").asDouble(),
+                r.path("longitude").asDouble()
+        );
+    }
+    // Bulamazsa koordinatı isim olarak döndür
+    String fallback = String.format("%.3f, %.3f", lat, lon);
+    return new com.egeozmen.weather_java_app.model.Location(fallback, "", lat, lon);
+}
 
     /** Şehir arama (Open-Meteo geocoding) */
     public List<Location> searchCity(String q) throws IOException, InterruptedException {
